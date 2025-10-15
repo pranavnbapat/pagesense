@@ -1,0 +1,9 @@
+services:
+  pagesense:
+    container_name: pagesense
+    build:
+      context: .
+    image: ghcr.io/pranavnbapat/pagesense:latest
+    restart: unless-stopped
+    ports:
+      - "10000:10000"

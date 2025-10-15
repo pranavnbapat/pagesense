@@ -5,52 +5,52 @@
     <title>HTML Body → Text</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <style>
-  :root { --bg:#0b0f14; --panel:#121821; --muted:#9fb0c3; --text:#e9eef4; --accent:#7cc4ff; }
-  * { box-sizing: border-box; }
-  html, body { height: 100%; }
-  body {
-    margin: 0; padding: 0; background: var(--bg); color: var(--text);
-    font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
-  }
-  .wrap { max-width: 980px; margin: 0 auto; padding: 20px; }
-  h1 { font-weight: 600; font-size: 20px; margin: 0 0 12px; letter-spacing: .2px; }
+        :root { --bg:#0b0f14; --panel:#121821; --muted:#9fb0c3; --text:#e9eef4; --accent:#7cc4ff; }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            margin: 0; padding: 0; background: var(--bg); color: var(--text);
+            font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+        }
+        .wrap { max-width: 980px; margin: 0 auto; padding: 20px; }
+        h1 { font-weight: 600; font-size: 20px; margin: 0 0 12px; letter-spacing: .2px; }
 
-  /* Top bar */
-  .bar {
-    display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px;
-    background: var(--panel); padding: 10px; border-radius: 12px; border: 1px solid #223043;
-    position: sticky; top: 0; z-index: 3;
-  }
-  input[type="url"] {
-    width: 100%; background: #0f1520; border: 1px solid #223043; color: var(--text);
-    border-radius: 10px; padding: 10px 12px; outline: none;
-  }
-  button {
-    background: #1a2434; color: var(--text); border: 1px solid #223043;
-    border-radius: 10px; padding: 10px 14px; cursor: pointer;
-  }
-  button:hover { background: #1e2a3e; }
-  .secondary { background: #0f1520; }
+        /* Top bar */
+        .bar {
+            display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px;
+            background: var(--panel); padding: 10px; border-radius: 12px; border: 1px solid #223043;
+            position: sticky; top: 0; z-index: 3;
+        }
+        input[type="url"] {
+            width: 100%; background: #0f1520; border: 1px solid #223043; color: var(--text);
+            border-radius: 10px; padding: 10px 12px; outline: none;
+        }
+        button {
+            background: #1a2434; color: var(--text); border: 1px solid #223043;
+            border-radius: 10px; padding: 10px 14px; cursor: pointer;
+        }
+        button:hover { background: #1e2a3e; }
+        .secondary { background: #0f1520; }
 
-  /* Result panel */
-  .panel {
-    margin-top: 12px; background: var(--panel); border: 1px solid #223043; border-radius: 12px;
-    padding: 12px;
-  }
-  .error { color: #ff6b6b; margin-top: 12px; }
-  .muted { color: var(--muted); font-size: 12px; }
-  .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        /* Result panel */
+        .panel {
+            margin-top: 12px; background: var(--panel); border: 1px solid #223043; border-radius: 12px;
+            padding: 12px;
+        }
+        .error { color: #ff6b6b; margin-top: 12px; }
+        .muted { color: var(--muted); font-size: 12px; }
+        .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 
-  textarea {
-    width: 100%; height: 70vh; background: #0f1520; color: var(--text);
-    border: 1px solid #223043; border-radius: 10px; padding: 12px; white-space: pre-wrap;
-  }
-</style>
+        textarea {
+            width: 100%; height: 70vh; background: #0f1520; color: var(--text);
+            border: 1px solid #223043; border-radius: 10px; padding: 12px; white-space: pre-wrap;
+        }
+    </style>
 </head>
 
 <body>
   <div class="wrap">
-    <h1>PageSense — Extract body text (no CSS/JS)</h1>
+    <h1>PageSense — Extract body text</h1>
 
     <!-- Top sticky bar -->
     <form method="post" class="bar">

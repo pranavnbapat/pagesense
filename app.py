@@ -150,4 +150,4 @@ def index():
 
 if __name__ == "__main__":
     # For local dev; in PyCharm, run this configuration.
-    app.run(host="127.0.0.1", port=8000, debug=True)
+    app.run(host="127.0.0.1", port=10000, debug=True)

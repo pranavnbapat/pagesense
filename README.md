@@ -1,4 +1,4 @@
-# PageSense — Extract body text (no CSS/JS)
+# PageSense — Extract body text
 
 PageSense is a tiny Flask app that fetches any public web page and returns just the readable text from the <body>—with scripts, styles, headers/footers, navs, forms, and common overlays removed. It’s handy for “read it later”, downstream AI summarisation, or quick copy/paste without the chrome.
 
@@ -6,10 +6,7 @@ PageSense is a tiny Flask app that fetches any public web page and returns just 
 
 - Accepts a single HTTP/HTTPS URL. 
 - Downloads the page with sane timeouts and a size cap (2 MB). 
-- Parses the HTML and removes noise:
-```html
-<script>, <style>, <template>, media/embeds (<iframe>, <video>, …), forms/inputs, and layout chrome (<header>, <nav>, <footer>, <aside>, <menu>, <dialog>, <figure>, <figcaption>).
-```
+- Parses the HTML and removes noise.
 - ARIA/role landmarks not part of content (banner, navigation, complementary, contentinfo, search, dialog, alert), explicitly hidden elements, and common “cookie/consent/subscribe/modal/overlay/paywall” blocks by id/class substring match. 
 - Extracts plain text with sensible newlines and normalises blank lines. 
 - Renders the result in a dark, minimal UI with word and character counts and a one-click Copy button. 
