@@ -41,7 +41,7 @@ def is_private_host(hostname: str) -> bool:
         ip = ipaddress.ip_address(hostname)
         return any(ip in net for net in PRIVATE_NETS)
     except ValueError:
-        # Not an IP literal; allow (DNS resolution not enforced here).
+        # Not an IP literal; allow (DNS resolution not enforced).
         return False
 
 @app.route("/", methods=["GET", "POST"])
