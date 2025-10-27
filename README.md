@@ -42,3 +42,16 @@ pip install -r requirements.txt
 python app.py
 ```
 #### Open http://127.0.0.1:10000 in your browser
+
+### **You can also access it via an API:**
+
+```
+curl -sS --get http://127.0.0.1:10000/api/extract \
+     --data-urlencode "url=https://example.com/article"
+```
+
+```
+curl -sS -X POST http://127.0.0.1:10000/api/extract \
+     -H 'Content-Type: application/json' \
+     -d '{"url":"https://example.com/article"}'
+```
