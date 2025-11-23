@@ -13,6 +13,8 @@ from bs4 import BeautifulSoup, Comment
 from flask import Flask, render_template, request, jsonify
 from urllib.parse import urlparse
 
+from utils import extract_pdf_text_from_bytes
+
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -26,8 +28,8 @@ except Exception:
 
 
 # --- Basic safety knobs (helpful even for local use) ---
-MAX_DOWNLOAD_BYTES = 10_000_000  # ~10 MB cap to avoid huge pages
-REQUEST_TIMEOUT = (10, 60)       # (connect, read) seconds
+MAX_DOWNLOAD_BYTES = 50_000_000  # ~50 MB cap to avoid huge pages
+REQUEST_TIMEOUT = (10, 120)       # (connect, read) seconds
 ALLOWED_SCHEMES = {"http", "https"}
 DESKTOP_UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/120.0 Safari/537.36")
@@ -81,6 +83,42 @@ def extract_text_from_url(raw_url: str) -> str:
 
     session = requests.Session()
 
+    try:
+        head_resp = session.head(
+            raw_url,
+            timeout=REQUEST_TIMEOUT,
+            allow_redirects=True,
+        )
+        head_resp.raise_for_status()
+        ctype_head = (head_resp.headers.get("Content-Type") or "").lower()
+    except Exception:
+        # Some servers don't like HEAD; fall back to treating as unknown
+        ctype_head = ""
+
+    if "application/pdf" in ctype_head:
+        # Download the PDF and extract text directly
+        with session.get(
+                raw_url,
+                timeout=REQUEST_TIMEOUT,
+                stream=True,
+                allow_redirects=True,
+        ) as resp:
+            resp.raise_for_status()
+            content_chunks: list[bytes] = []
+            total = 0
+            for chunk in resp.iter_content(chunk_size=16384):
+                if not chunk:
+                    continue
+                total += len(chunk)
+                if total > MAX_DOWNLOAD_BYTES:
+                    raise ValueError("File too large (over 50 MB).")
+                content_chunks.append(chunk)
+        pdf_bytes = b"".join(content_chunks)
+        pdf_text = extract_pdf_text_from_bytes(pdf_bytes)
+        if not pdf_text.strip():
+            raise ValueError("Could not extract text from PDF (possibly scanned/image-only).")
+        return pdf_text
+
     def attempt_fetch(user_agent: str):
         headers = {
             "User-Agent": user_agent,
@@ -107,6 +145,24 @@ def extract_text_from_url(raw_url: str) -> str:
             resp.raise_for_status()
             # Sanity: only proceed for HTML-ish content
             ctype = (resp.headers.get("Content-Type") or "").lower()
+
+            if "application/pdf" in ctype:
+                content_chunks, total = [], 0
+                for chunk in resp.iter_content(chunk_size=16384):
+                    if not chunk:
+                        continue
+                    total += len(chunk)
+                    if total > MAX_DOWNLOAD_BYTES:
+                        raise ValueError("File too large (over 10 MB).")
+                    content_chunks.append(chunk)
+                pdf_bytes = b"".join(content_chunks)
+                pdf_text = extract_pdf_text_from_bytes(pdf_bytes)
+                if not pdf_text.strip():
+                    raise ValueError("Could not extract text from PDF (possibly scanned/image-only).")
+                # Return as if it were "HTML" so the outer code can reuse its path
+                return pdf_text.encode("utf-8"), "utf-8"
+
+                # ---- existing HTML-only check ----
             if "text/html" not in ctype and "application/xhtml+xml" not in ctype:
                 raise ValueError(f"Unsupported Content-Type: {ctype or 'unknown'}")
 
@@ -116,7 +172,7 @@ def extract_text_from_url(raw_url: str) -> str:
                 if chunk:
                     total += len(chunk)
                     if total > MAX_DOWNLOAD_BYTES:
-                        raise ValueError("Page too large (over 2 MB).")
+                        raise ValueError("Page too large (over 50 MB).")
                     content_chunks.append(chunk)
             return b"".join(content_chunks), (resp.encoding or "utf-8")
 
