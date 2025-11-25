@@ -6,6 +6,6 @@ services:
     image: ghcr.io/pranavnbapat/pagesense:latest
     restart: unless-stopped
     environment:
-      - GUNICORN_CMD_ARGS=--timeout 120
+      - GUNICORN_CMD_ARGS=--timeout 720
     ports:
       - "10000:10000"
