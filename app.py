@@ -22,6 +22,8 @@ BASE_DIR = Path(__file__).resolve().parent
 
 LAST_DOMAIN_CALL: dict[str, float] = {}
 
+POLITE_MODE = False  # set True for throttling delays
+
 app = Flask(__name__, template_folder=str(BASE_DIR / "templates"))
 
 try:
@@ -98,6 +100,12 @@ def extract_text_from_url(raw_url: str) -> tuple[str, str]:
         raise ValueError("Private/loopback addresses are not allowed.")
 
     session = requests.Session()
+
+    from requests.adapters import HTTPAdapter
+    adapter = HTTPAdapter(pool_connections=50, pool_maxsize=50, max_retries=0)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+
     session.headers.update({"Accept-Encoding": "identity"})
 
     try:
@@ -153,13 +161,14 @@ def extract_text_from_url(raw_url: str) -> tuple[str, str]:
         domain = parsed.netloc.lower()
 
         # --- polite per-domain throttling ---
-        now = time.monotonic()
-        last = LAST_DOMAIN_CALL.get(domain)
-        if last is not None:
-            required = random.uniform(1.2, 3.5)
-            elapsed = now - last
-            if elapsed < required:
-                time.sleep(required - elapsed)
+        if POLITE_MODE:
+            now = time.monotonic()
+            last = LAST_DOMAIN_CALL.get(domain)
+            if last is not None:
+                required = random.uniform(1.2, 3.5)
+                elapsed = now - last
+                if elapsed < required:
+                    time.sleep(required - elapsed)
 
         headers = {
             "User-Agent": random.choice(UA_POOL),
@@ -169,15 +178,17 @@ def extract_text_from_url(raw_url: str) -> tuple[str, str]:
         }
 
         # 1) Optional warm-up hit to set cookies (ignore errors)
-        try:
-            session.get(f"{parsed.scheme}://{parsed.netloc}/", headers=headers, timeout=REQUEST_TIMEOUT,
-                        allow_redirects=True)
-        except Exception:
-            pass
+        if POLITE_MODE:
+            try:
+                session.get(f"{parsed.scheme}://{parsed.netloc}/", headers=headers, timeout=REQUEST_TIMEOUT,
+                            allow_redirects=True)
+            except Exception:
+                pass
 
         # 2) Real fetch, streamed + size cap
-        # human-like browsing delay
-        time.sleep(random.uniform(0.6, 1.8))
+        # human-like browsing delay (only in polite mode)
+        if POLITE_MODE:
+            time.sleep(random.uniform(0.6, 1.8))
 
         with session.get(raw_url, headers=headers, timeout=REQUEST_TIMEOUT, stream=True, allow_redirects=True,) as resp:
             resp.raw.decode_content = False
