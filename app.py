@@ -381,5 +381,7 @@ def api_extract():
 
 
 if __name__ == "__main__":
-    # For local dev; in PyCharm, run this configuration.
-    app.run(host="127.0.0.1", port=11000, debug=True)
+    host = "0.0.0.0"
+    port = int(__import__("os").environ.get("PORT", "8006"))
+    app.run(host=host, port=port, debug=False)
+
