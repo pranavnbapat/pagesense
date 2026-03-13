@@ -13,7 +13,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir gunicorn \
     && python -m playwright install --with-deps chromium
 
 # App code
@@ -29,5 +28,5 @@ HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
 
 # Entrypoint + server
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["gunicorn", "-w", "2", "-k", "gthread", "--threads", "8", \
-     "--bind", "0.0.0.0:10000", "app:app", "--timeout", "720", "--log-level", "info"]
+CMD ["gunicorn", "-w", "2", \
+     "--bind", "0.0.0.0:10000", "app:app", "--timeout", "45", "--log-level", "info"]

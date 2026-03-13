@@ -3,9 +3,10 @@
 
 import atexit
 import re
+import threading
 
 from io import BytesIO
-from typing import Optional, Tuple
+from typing import Callable
 
 from pypdf import PdfReader, filters
 from playwright.sync_api import sync_playwright
@@ -13,34 +14,44 @@ from playwright.sync_api import sync_playwright
 filters.ZLIB_MAX_OUTPUT_LENGTH = 0
 
 
-_pw = None
-_browser = None
+_thread_state = threading.local()
+_cleanup_registered = False
+_cleanup_lock = threading.Lock()
+_playwright_instances: list[tuple[object, object]] = []
 
 def _get_browser():
     """
-    Create one Playwright browser per Gunicorn worker process and reuse it.
-    Launching Chromium per request is extremely slow.
+    Create one Playwright browser per request thread and reuse it.
+    Playwright sync objects are thread-affine and cannot be safely shared
+    across Flask/Gunicorn request threads.
     """
-    global _pw, _browser
-    if _browser is None:
-        _pw = sync_playwright().start()
-        _browser = _pw.chromium.launch(headless=True)
+    global _cleanup_registered
 
-        # Clean shutdown when the worker exits
-        def _close():
-            global _pw, _browser
-            try:
-                if _browser:
-                    _browser.close()
-            finally:
-                _browser = None
-                if _pw:
-                    _pw.stop()
-                _pw = None
+    browser = getattr(_thread_state, "browser", None)
+    if browser is None:
+        playwright = sync_playwright().start()
+        browser = playwright.chromium.launch(headless=True)
+        _thread_state.playwright = playwright
+        _thread_state.browser = browser
+        with _cleanup_lock:
+            _playwright_instances.append((playwright, browser))
 
-        atexit.register(_close)
+        with _cleanup_lock:
+            if not _cleanup_registered:
+                def _close_all():
+                    with _cleanup_lock:
+                        instances = list(_playwright_instances)
+                        _playwright_instances.clear()
+                    for playwright_obj, browser_obj in instances:
+                        try:
+                            browser_obj.close()
+                        finally:
+                            playwright_obj.stop()
 
-    return _browser
+                atexit.register(_close_all)
+                _cleanup_registered = True
+
+    return browser
 
 def extract_pdf_text_from_bytes(pdf_bytes: bytes) -> str:
     """
@@ -70,14 +81,30 @@ def extract_pdf_text_from_bytes(pdf_bytes: bytes) -> str:
 
     return text.replace("\x00", "").strip()
 
-def fetch_with_browser(url: str) -> tuple[str, str]:
+def fetch_with_browser(
+    url: str,
+    allow_url: Callable[[str], bool] | None = None,
+    timeout_ms: int = 45_000,
+) -> tuple[str, str]:
     browser = _get_browser()
-    page = browser.new_page()
+    context = browser.new_context()
+    page = context.new_page()
     try:
-        page.goto(url, timeout=120_000, wait_until="networkidle")
+        if allow_url is not None:
+            def _route_handler(route):
+                if allow_url(route.request.url):
+                    route.continue_()
+                else:
+                    route.abort("blockedbyclient")
+
+            page.route("**/*", _route_handler)
+
+        page.goto(url, timeout=timeout_ms, wait_until="networkidle")
         resolved = page.url
+        if allow_url is not None and not allow_url(resolved):
+            raise ValueError("Browser navigation resolved to a blocked address.")
         html = page.content()
         return resolved, html
     finally:
         page.close()
-
+        context.close()

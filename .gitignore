@@ -36,3 +36,6 @@ output/
 *.tmp
 *.bak
 *.swp
+*.json
+*.db
+docker-compose-online.yml

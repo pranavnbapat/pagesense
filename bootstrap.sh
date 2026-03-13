@@ -21,7 +21,7 @@ APP_DIR="${APP_DIR:-/workspace/pagesense}"
 GIT_URL="${GIT_URL:-https://github.com/pranavnbapat/pagesense.git}"
 PORT="${PORT:-8006}"
 WORKERS="${WORKERS:-1}"
-TIMEOUT="${TIMEOUT:-180}"
+TIMEOUT="${TIMEOUT:-45}"
 
 PY_BIN="${PY_BIN:-python3}"
 
@@ -75,40 +75,6 @@ pip install -U gunicorn
 # Playwright browsers are NOT installed by pip; must run this explicitly
 echo "[bootstrap] Installing Playwright Chromium..."
 python -m playwright install chromium
-
-# --- Patch app.py to bind to 0.0.0.0 and use PORT env (idempotent-ish) ---
-echo "[bootstrap] Patching app.py __main__ to bind 0.0.0.0:${PORT} (if needed)..."
-if grep -q 'app.run(host="127.0.0.1"' app.py; then
-  # Replace everything from if __name__ == "__main__": to end of file with a robust block.
-  python - <<'PY'
-from pathlib import Path
-import re
-
-p = Path("app.py")
-s = p.read_text(encoding="utf-8")
-
-pattern = r'if __name__ == "__main__":\s*(?:.|\n)*\Z'
-replacement = (
-    'if __name__ == "__main__":\n'
-    '    import os\n'
-    '    host = "0.0.0.0"\n'
-    '    port = int(os.environ.get("PORT", "8006"))\n'
-    '    # Flask dev server is fine for quick tests, but we run gunicorn in production.\n'
-    '    app.run(host=host, port=port, debug=False)\n'
-)
-
-if re.search(pattern, s):
-    s2 = re.sub(pattern, replacement, s, flags=re.MULTILINE)
-else:
-    # If the pattern isn't found, just append (won't break gunicorn usage).
-    s2 = s.rstrip() + "\n\n" + replacement
-
-p.write_text(s2, encoding="utf-8")
-print("Patched app.py")
-PY
-else
-  echo "[bootstrap] app.py already looks patched (or different); skipping patch."
-fi
 
 # --- Stop existing server if running ---
 if [[ -f server.pid ]]; then

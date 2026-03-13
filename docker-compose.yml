@@ -9,6 +9,6 @@ services:
     mem_limit: "2g"
     mem_reservation: "1g"
     environment:
-      - GUNICORN_CMD_ARGS=--timeout 720
+      - GUNICORN_CMD_ARGS=--timeout 45
     ports:
       - "10000:10000"
