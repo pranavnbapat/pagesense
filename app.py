@@ -13,4 +13,5 @@ if __name__ == "__main__":
         port=config.port,
         debug=config.debug,
         use_reloader=config.auto_reload,
+        load_dotenv=False,
     )

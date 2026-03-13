@@ -118,6 +118,23 @@ def read_response_bytes(resp: requests.Response, *, byte_limit: int, label: str)
     return b"".join(chunks)
 
 
+def fetch_simple_html(url: str, config: AppConfig) -> tuple[str, str]:
+    response = requests.get(
+        url,
+        headers={"User-Agent": random.choice(config.ua_pool), "Accept": "text/html,application/xhtml+xml"},
+        timeout=config.request_timeout,
+        allow_redirects=True,
+    )
+    response.raise_for_status()
+    final_url = response.url
+    final_parsed = urlparse(final_url)
+    if _is_blocked_media_host_for_config(final_parsed.hostname, config):
+        raise ValueError("Video platform URLs are not supported.")
+    if _is_private_host_for_config(final_parsed.hostname, config):
+        raise ValueError("Redirected to a private/loopback address, which is not allowed.")
+    return final_url, response.text
+
+
 def extract_clean_text(html: str) -> str:
     soup = BeautifulSoup(html, "lxml")
     body = soup.body if soup.body else soup
@@ -263,6 +280,18 @@ def extract_text_from_url(raw_url: str) -> tuple[str, str]:
 
     html = html_bytes.decode(enc, errors="replace")
     clean_text = extract_clean_text(html) if html else ""
+
+    if not clean_text:
+        try:
+            ensure_within_deadline(started_at)
+            simple_resolved_url, simple_html = fetch_simple_html(normalized_url, config)
+            simple_text = extract_clean_text(simple_html)
+            if simple_text:
+                resolved_url = simple_resolved_url
+                clean_text = simple_text
+                html = simple_html
+        except Exception as exc:
+            LOGGER.warning("simple html fallback failed: %s", exc)
 
     if needs_browser_fetch or should_use_browser_fallback(html, clean_text):
         try:
