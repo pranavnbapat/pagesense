@@ -7,10 +7,13 @@ import json
 import sqlite3
 from pathlib import Path
 
+from pagesense.config import load_config
+
 
 def parse_args() -> argparse.Namespace:
+    config = load_config()
     parser = argparse.ArgumentParser(description="View recent PageSense request logs.")
-    parser.add_argument("--db", default="requests.db", help="Path to the SQLite request log database.")
+    parser.add_argument("--db", default=config.request_log_db_path, help="Path to the SQLite request log database.")
     parser.add_argument("--limit", type=int, default=20, help="Number of rows to show.")
     parser.add_argument("--offset", type=int, default=0, help="Rows to skip from newest to oldest.")
     parser.add_argument("--source", choices=["api", "ui"], help="Filter by request source.")

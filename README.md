@@ -51,6 +51,8 @@ Runtime settings are loaded from [`.env`](/home/pranav/PyCharm/Personal/pagesens
 
 Requests are logged to SQLite when `REQUEST_LOGGING_ENABLED=true`. By default the file is [requests.db](/home/pranav/PyCharm/Personal/pagesense/requests.db) and each row stores timestamp, source (`ui` or `api`), client IP, forwarded IP chain, method, path, target URL, payload details, status, duration, and any error message.
 
+For local auto-reload with `python app.py`, set `DEBUG=true` and `AUTO_RELOAD=true` in [`.env`](/home/pranav/PyCharm/Personal/pagesense/.env). Keep both `false` in production.
+
 For local inspection, use [view_logs.py](/home/pranav/PyCharm/Personal/pagesense/view_logs.py):
 
 ```bash
@@ -92,3 +94,22 @@ curl -sS -X POST http://127.0.0.1:8006/api/extract \
 
 - Use Gunicorn for production.
 - If you keep the Playwright fallback enabled, prefer a process-based worker model over threaded workers unless you have explicitly validated your browser lifecycle design.
+
+## Project structure
+
+- [app.py](/home/pranav/PyCharm/Personal/pagesense/app.py): thin entrypoint that creates the Flask app.
+- [pagesense/config.py](/home/pranav/PyCharm/Personal/pagesense/pagesense/config.py): `.env` loading and runtime config.
+- [pagesense/routes/web.py](/home/pranav/PyCharm/Personal/pagesense/pagesense/routes/web.py): UI routes.
+- [pagesense/routes/api.py](/home/pranav/PyCharm/Personal/pagesense/pagesense/routes/api.py): API, logs API, and docs routes.
+- [pagesense/services/extractor.py](/home/pranav/PyCharm/Personal/pagesense/pagesense/services/extractor.py): URL validation, fetch flow, HTML cleanup, and browser fallback.
+- [pagesense/services/request_logs.py](/home/pranav/PyCharm/Personal/pagesense/pagesense/services/request_logs.py): SQLite request logging.
+- [pagesense/services/openapi.py](/home/pranav/PyCharm/Personal/pagesense/pagesense/services/openapi.py): OpenAPI schema generation.
+- [pagesense/browser.py](/home/pranav/PyCharm/Personal/pagesense/pagesense/browser.py): Playwright and PDF helpers.
+
+## Tests
+
+Run the lightweight test suite with:
+
+```bash
+.venv/bin/python -m unittest discover -s tests -v
+```
