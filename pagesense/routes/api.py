@@ -29,10 +29,30 @@ def api_extract():
         return response, status
 
     try:
-        resolved_url, text = extract_text_from_url(url)
-        response = jsonify({"ok": True, "url": url, "resolved_url": resolved_url, "text": text})
+        result = extract_text_from_url(url)
+        metrics = {
+            "duration_ms": int((time.monotonic() - started_at) * 1000),
+            "downloaded_bytes": result.downloaded_bytes,
+            "extracted_text_bytes": result.extracted_text_bytes,
+        }
+        response = jsonify({
+            "ok": True,
+            "url": url,
+            "resolved_url": result.resolved_url,
+            "text": result.text,
+            "metrics": metrics,
+        })
         status = 200
-        log_request_event(source="api", started_at=started_at, target_url=url, response_status=status, ok=True, resolved_url=resolved_url)
+        log_request_event(
+            source="api",
+            started_at=started_at,
+            target_url=url,
+            response_status=status,
+            ok=True,
+            resolved_url=result.resolved_url,
+            downloaded_bytes=result.downloaded_bytes,
+            extracted_text_bytes=result.extracted_text_bytes,
+        )
         return response, status
     except ValueError as exc:
         response = jsonify({"ok": False, "url": url, "error": str(exc)})

@@ -6,6 +6,7 @@ import random
 import re
 import socket
 import time
+from dataclasses import dataclass
 from urllib.parse import urlparse
 
 import requests
@@ -18,6 +19,14 @@ from pagesense.config import AppConfig
 
 LOGGER = logging.getLogger(__name__)
 LAST_DOMAIN_CALL: dict[str, float] = {}
+
+
+@dataclass(frozen=True)
+class ExtractionResult:
+    resolved_url: str
+    text: str
+    downloaded_bytes: int
+    extracted_text_bytes: int
 
 
 def get_config() -> AppConfig:
@@ -179,7 +188,7 @@ def should_use_browser_fallback(html: str, clean_text: str) -> bool:
     return "<script" in lowered or 'id="app"' in lowered or 'id="root"' in lowered
 
 
-def extract_text_from_url(raw_url: str) -> tuple[str, str]:
+def extract_text_from_url(raw_url: str) -> ExtractionResult:
     config = get_config()
     normalized_url, domain = validate_url(raw_url)
     parsed = urlparse(normalized_url)
@@ -276,7 +285,13 @@ def extract_text_from_url(raw_url: str) -> tuple[str, str]:
 
     if content_kind == "pdf":
         ensure_within_deadline(started_at)
-        return resolved_url, html_bytes.decode(enc, errors="replace")
+        text = html_bytes.decode(enc, errors="replace")
+        return ExtractionResult(
+            resolved_url=resolved_url,
+            text=text,
+            downloaded_bytes=len(html_bytes),
+            extracted_text_bytes=len(text.encode("utf-8")),
+        )
 
     html = html_bytes.decode(enc, errors="replace")
     clean_text = extract_clean_text(html) if html else ""
@@ -312,4 +327,9 @@ def extract_text_from_url(raw_url: str) -> tuple[str, str]:
                 raise
 
     ensure_within_deadline(started_at)
-    return resolved_url, clean_text
+    return ExtractionResult(
+        resolved_url=resolved_url,
+        text=clean_text,
+        downloaded_bytes=len(html.encode("utf-8")),
+        extracted_text_bytes=len(clean_text.encode("utf-8")),
+    )

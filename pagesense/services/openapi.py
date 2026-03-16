@@ -12,8 +12,9 @@ def build_openapi_spec(config: AppConfig) -> dict[str, object]:
             "url": {"type": "string", "format": "uri"},
             "resolved_url": {"type": "string", "format": "uri"},
             "text": {"type": "string"},
+            "metrics": {"$ref": "#/components/schemas/ExtractMetrics"},
         },
-        "required": ["ok", "url", "resolved_url", "text"],
+        "required": ["ok", "url", "resolved_url", "text", "metrics"],
     }
     error_response = {
         "type": "object",
@@ -32,6 +33,15 @@ def build_openapi_spec(config: AppConfig) -> dict[str, object]:
             "securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "Token"}},
             "schemas": {
                 "ExtractRequest": {"type": "object", "properties": {"url": {"type": "string", "format": "uri"}}, "required": ["url"]},
+                "ExtractMetrics": {
+                    "type": "object",
+                    "properties": {
+                        "duration_ms": {"type": "integer"},
+                        "downloaded_bytes": {"type": "integer"},
+                        "extracted_text_bytes": {"type": "integer"},
+                    },
+                    "required": ["duration_ms", "downloaded_bytes", "extracted_text_bytes"],
+                },
                 "ExtractSuccess": extract_success,
                 "ErrorResponse": error_response,
                 "LogEntry": {

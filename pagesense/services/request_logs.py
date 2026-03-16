@@ -38,12 +38,21 @@ def init_request_log_db(config: AppConfig) -> None:
                 resolved_url TEXT,
                 error_message TEXT,
                 duration_ms INTEGER,
+                downloaded_bytes INTEGER,
+                extracted_text_bytes INTEGER,
                 headers_json TEXT
             )
             """
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_request_logs_created_at ON request_logs(created_at)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_request_logs_source ON request_logs(source)")
+        existing_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(request_logs)").fetchall()
+        }
+        if "downloaded_bytes" not in existing_columns:
+            conn.execute("ALTER TABLE request_logs ADD COLUMN downloaded_bytes INTEGER")
+        if "extracted_text_bytes" not in existing_columns:
+            conn.execute("ALTER TABLE request_logs ADD COLUMN extracted_text_bytes INTEGER")
 
 
 def get_client_ip() -> tuple[str | None, str | None]:
@@ -81,6 +90,8 @@ def log_request_event(
     ok: bool,
     resolved_url: str | None = None,
     error_message: str | None = None,
+    downloaded_bytes: int | None = None,
+    extracted_text_bytes: int | None = None,
 ) -> None:
     config: AppConfig = current_app.extensions["pagesense_config"]
     if not config.request_logging_enabled:
@@ -101,8 +112,8 @@ def log_request_event(
                 created_at, source, method, path, client_ip, forwarded_for,
                 user_agent, referer, target_url, query_string, request_content_type,
                 request_payload, response_status, ok, resolved_url, error_message,
-                duration_ms, headers_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                duration_ms, downloaded_bytes, extracted_text_bytes, headers_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -122,6 +133,8 @@ def log_request_event(
                 resolved_url,
                 error_message,
                 int((time.monotonic() - started_at) * 1000),
+                downloaded_bytes,
+                extracted_text_bytes,
                 json.dumps(headers_snapshot, ensure_ascii=True, sort_keys=True),
             ),
         )
@@ -133,7 +146,7 @@ def get_logs_from_db(*, limit: int, offset: int, source: str | None = None, ok: 
         SELECT id, created_at, source, method, path, client_ip, forwarded_for,
                user_agent, referer, target_url, query_string, request_content_type,
                request_payload, response_status, ok, resolved_url, error_message,
-               duration_ms, headers_json
+               duration_ms, downloaded_bytes, extracted_text_bytes, headers_json
         FROM request_logs
     """
     clauses: list[str] = []

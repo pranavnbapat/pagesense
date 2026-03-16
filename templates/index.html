@@ -74,7 +74,14 @@
     <div class="panel">
       <div class="row">
         <div class="muted">Extracted text</div>
-        <div class="muted" id="stats"></div>
+        <div style="text-align:right">
+          <div class="muted" id="stats"></div>
+          <div class="muted" id="metrics">
+            {% if result_meta %}
+              {{ result_meta.duration_ms }} ms • {{ result_meta.downloaded_human }} downloaded • {{ result_meta.extracted_human }} extracted
+            {% endif %}
+          </div>
+        </div>
       </div>
 
       <textarea id="out" readonly placeholder="The extracted text will appear here…">{{ text_result or "" }}</textarea>

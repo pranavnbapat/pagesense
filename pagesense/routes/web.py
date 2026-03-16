@@ -12,6 +12,14 @@ from pagesense.services.request_logs import log_request_event
 web_bp = Blueprint("web", __name__)
 
 
+def format_bytes(byte_count: int) -> str:
+    if byte_count < 1024:
+        return f"{byte_count} B"
+    if byte_count < 1024 * 1024:
+        return f"{byte_count / 1024:.1f} KB"
+    return f"{byte_count / (1024 * 1024):.2f} MB"
+
+
 @web_bp.route("/", methods=["GET", "POST"])
 def index():
     started_at = time.monotonic()
@@ -20,11 +28,21 @@ def index():
     raw_url = None
     response_status = 200
     resolved_url = None
+    result_meta = None
 
     if request.method == "POST":
         raw_url = (request.form.get("url") or "").strip()
         try:
-            resolved_url, text_result = extract_text_from_url(raw_url)
+            result = extract_text_from_url(raw_url)
+            resolved_url = result.resolved_url
+            text_result = result.text
+            result_meta = {
+                "duration_ms": int((time.monotonic() - started_at) * 1000),
+                "downloaded_bytes": result.downloaded_bytes,
+                "downloaded_human": format_bytes(result.downloaded_bytes),
+                "extracted_text_bytes": result.extracted_text_bytes,
+                "extracted_human": format_bytes(result.extracted_text_bytes),
+            }
         except ValueError as exc:
             error = str(exc)
             response_status = 422
@@ -43,5 +61,7 @@ def index():
         ok=error is None,
         resolved_url=resolved_url,
         error_message=error,
+        downloaded_bytes=(result_meta or {}).get("downloaded_bytes"),
+        extracted_text_bytes=(result_meta or {}).get("extracted_text_bytes"),
     )
-    return render_template("index.html", text_result=text_result, error=error)
+    return render_template("index.html", text_result=text_result, error=error, result_meta=result_meta)
