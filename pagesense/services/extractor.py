@@ -173,11 +173,67 @@ def extract_clean_text(html: str) -> str:
         "paywall", "meter", "gate", "promo", "breadcrumb", "share", "social", "toolbar",
         "footer", "header", "nav", "sidebar",
     ]
-    selector = ",".join([f'[id*="{s}" i],[class*="{s}" i]' for s in substrings])
-    for el in body.select(selector):
+
+    def has_noise_marker(tag) -> bool:
+        tag_id = (tag.get("id") or "").lower()
+        if any(term in tag_id for term in substrings):
+            return True
+
+        classes = [cls.lower() for cls in (tag.get("class") or [])]
+        for cls in classes:
+            if any(
+                cls == term or cls.startswith(f"{term}-") or cls.startswith(f"{term}_")
+                for term in substrings
+            ):
+                return True
+        return False
+
+    for el in [tag for tag in body.find_all(True) if has_noise_marker(tag)]:
         el.decompose()
 
-    return re.sub(r"\n{3,}", "\n\n", body.get_text("\n", True)).strip()
+    text = re.sub(r"\n{3,}", "\n\n", body.get_text("\n", True)).strip()
+    return post_process_text(text)
+
+
+def post_process_text(text: str) -> str:
+    lines = [line.strip() for line in text.splitlines()]
+    cleaned_lines: list[str] = []
+    for line in lines:
+        if not line:
+            if cleaned_lines and cleaned_lines[-1] != "":
+                cleaned_lines.append("")
+            continue
+
+        lowered = line.lower()
+        if lowered == "back":
+            continue
+        if re.fullmatch(r"pdf\s*\[[^\]]+\]", line, flags=re.IGNORECASE):
+            continue
+        if lowered in {"leaflets & guidelines", "projects", "social media", "discuss the tool", "disqus"}:
+            continue
+        if lowered in {
+            "applicability",
+            "theme",
+            "languages",
+            "keywords",
+            "year of release",
+            "country of origin",
+            "issuing organisation",
+            "contact",
+            "number of pages",
+            "average rating to the tool:",
+            "number of ratings to the tool:",
+            "give your rating to the tool:",
+        }:
+            continue
+        if lowered.startswith("more about the tool on organic eprints"):
+            continue
+
+        cleaned_lines.append(line)
+
+    result = "\n".join(cleaned_lines)
+    result = re.sub(r"\n{3,}", "\n\n", result).strip()
+    return result
 
 
 def should_use_browser_fallback(html: str, clean_text: str) -> bool:

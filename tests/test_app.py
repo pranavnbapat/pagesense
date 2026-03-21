@@ -5,6 +5,7 @@ import tempfile
 import unittest
 
 from pagesense import create_app
+from pagesense.services.extractor import extract_clean_text
 
 
 class PageSenseAppTests(unittest.TestCase):
@@ -76,6 +77,33 @@ class PageSenseAppTests(unittest.TestCase):
         self.assertEqual(row[4], "203.0.113.99")
         self.assertEqual(row[5], 200)
         self.assertEqual(row[6], 1)
+
+    def test_cleanup_keeps_content_sidebar_but_removes_real_sidebar(self) -> None:
+        html = """
+        <html><body>
+          <div class="content__sidebar">
+            <p>Back</p>
+            <p>PDF [EN]</p>
+            <h1>Main title</h1>
+            <p>Main body text.</p>
+            <p>Related links</p>
+            <p>https://example.com/doc</p>
+          </div>
+          <div class="sidebar">
+            <p>Sidebar content</p>
+            <p>Applicability</p>
+          </div>
+        </body></html>
+        """
+        text = extract_clean_text(html)
+        self.assertIn("Main title", text)
+        self.assertIn("Main body text.", text)
+        self.assertIn("Related links", text)
+        self.assertIn("https://example.com/doc", text)
+        self.assertNotIn("Back", text)
+        self.assertNotIn("PDF [EN]", text)
+        self.assertNotIn("Sidebar content", text)
+        self.assertNotIn("Applicability", text)
 
 
 if __name__ == "__main__":
