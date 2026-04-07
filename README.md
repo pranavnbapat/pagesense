@@ -70,6 +70,13 @@ Interactive API docs are available at `/docs`, with the OpenAPI schema at `/open
 
 For server deployment behind Traefik, use [docker-compose-online.yml](/home/pranav/PyCharm/Personal/pagesense/docker-compose-online.yml) and [`.env.online.sample`](/home/pranav/PyCharm/Personal/pagesense/.env.online.sample) as the starting point. It mounts `./data` into the container so `requests.db` survives container recreation.
 
+To build and push the container image to GHCR from the project root, use [build_and_push.sh](/home/pranav/PyCharm/Personal/pagesense/build_and_push.sh):
+
+```bash
+sh build_and_push.sh
+sh build_and_push.sh v1
+```
+
 ## API examples
 
 ```bash

@@ -127,6 +127,22 @@ def read_response_bytes(resp: requests.Response, *, byte_limit: int, label: str)
     return b"".join(chunks)
 
 
+def looks_like_pdf_response(*, content_type: str, path: str, content_disposition: str | None = None) -> bool:
+    lowered_disposition = (content_disposition or "").lower()
+    if "application/pdf" in content_type:
+        return True
+    if path.endswith(".pdf"):
+        if "application/octet-stream" in content_type or "application/force-download" in content_type:
+            return True
+    if ".pdf" in lowered_disposition:
+        return True
+    return False
+
+
+def has_pdf_magic_prefix(data: bytes) -> bool:
+    return data.startswith(b"%PDF-")
+
+
 def fetch_simple_html(url: str, config: AppConfig) -> tuple[str, str]:
     response = requests.get(
         url,
@@ -294,8 +310,13 @@ def extract_text_from_url(raw_url: str) -> ExtractionResult:
 
             resp.raise_for_status()
             ctype = (resp.headers.get("Content-Type") or "").lower()
+            content_disposition = resp.headers.get("Content-Disposition")
             final_path = final_parsed.path.lower()
-            is_pdf = "application/pdf" in ctype or ("application/octet-stream" in ctype and final_path.endswith(".pdf"))
+            is_pdf = looks_like_pdf_response(
+                content_type=ctype,
+                path=final_path,
+                content_disposition=content_disposition,
+            )
 
             if is_pdf:
                 pdf_bytes = read_response_bytes(resp, byte_limit=config.max_pdf_bytes, label="File")
@@ -310,6 +331,12 @@ def extract_text_from_url(raw_url: str) -> ExtractionResult:
                 or "application/octet-stream" in ctype
             )
             if not is_htmlish:
+                payload_bytes = read_response_bytes(resp, byte_limit=config.max_pdf_bytes, label="File")
+                if has_pdf_magic_prefix(payload_bytes):
+                    pdf_text = extract_pdf_text_from_bytes(payload_bytes)
+                    if not pdf_text.strip():
+                        raise ValueError("Could not extract text from PDF (possibly scanned/image-only).")
+                    return pdf_text.encode("utf-8"), "utf-8", final_url, "pdf"
                 raise ValueError(f"Unsupported Content-Type: {ctype or 'unknown'}")
 
             resp.encoding = resp.apparent_encoding or resp.encoding
